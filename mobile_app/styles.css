@@ -116,6 +116,7 @@ button:active {
 .hint {
   color: var(--muted);
   font-size: 14px;
+  white-space: pre-line;
 }
 
 .word-nav {
@@ -166,11 +167,31 @@ button:active {
   line-height: 1.45;
 }
 
+.translation {
+  color: #1f4f9a;
+  font-weight: 700;
+  background: rgba(213, 228, 255, 0.45);
+  border-left: 4px solid #4f7fd4;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
 .badge {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #ecd9b2;
-  color: #5c3f22;
+  font-weight: 700;
+}
+
+.badge-new {
+  background: #d7f3d4;
+  color: #1d6b1f;
+  border: 1px solid #95d494;
+}
+
+.badge-review {
+  background: #ffe1c2;
+  color: #7a3f00;
+  border: 1px solid #efb67f;
 }
 
 .actions {
@@ -248,4 +269,3 @@ button:active {
     right: 6px;
   }
 }
-
