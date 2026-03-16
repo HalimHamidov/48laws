@@ -92,7 +92,7 @@ function setReminderEnabled(enabled) {
 
 function progressOf(key) {
   if (!state.progress[key]) {
-    state.progress[key] = { timesSeen: 0, dueDate: isoToday(), lastDate: null };
+    state.progress[key] = { timesSeen: 0, dueDate: isoToday(), lastDate: null, excluded: false };
   }
   return state.progress[key];
 }
@@ -104,6 +104,7 @@ function addDays(isoDate, days) {
 }
 
 function intervalDays(timesSeen, grade) {
+  if (grade === "exclude") return 99999;
   const map = {
     again: 1,
     hard: Math.max(1, Math.floor(timesSeen <= 2 ? 2 : 3)),
@@ -120,6 +121,7 @@ function etaLabel(days) {
 }
 
 function estimateReturnDays(wordKey, grade) {
+  if (grade === "exclude") return 99999;
   const p = progressOf(wordKey);
   const nextSeen = p.timesSeen + 1;
   return intervalDays(nextSeen, grade);
@@ -127,7 +129,10 @@ function estimateReturnDays(wordKey, grade) {
 
 function dueWords(today, limit) {
   return words
-    .filter((w) => progressOf(w.key).dueDate <= today)
+    .filter((w) => {
+      const p = progressOf(w.key);
+      return !p.excluded && p.dueDate <= today;
+    })
     .sort((a, b) => {
       const pa = progressOf(a.key);
       const pb = progressOf(b.key);
@@ -142,7 +147,8 @@ function newWords(limit, usedSet) {
   for (const w of words) {
     if (list.length >= limit) break;
     if (usedSet.has(w.key)) continue;
-    if (progressOf(w.key).timesSeen === 0) {
+    const p = progressOf(w.key);
+    if (!p.excluded && p.timesSeen === 0) {
       list.push(w);
       usedSet.add(w.key);
     }
@@ -152,7 +158,7 @@ function newWords(limit, usedSet) {
 
 function oldestWords(limit, usedSet) {
   return words
-    .filter((w) => !usedSet.has(w.key))
+    .filter((w) => !usedSet.has(w.key) && !progressOf(w.key).excluded)
     .sort((a, b) => {
       const pa = progressOf(a.key).lastDate || "1970-01-01";
       const pb = progressOf(b.key).lastDate || "1970-01-01";
@@ -202,6 +208,13 @@ function loadTodayBatch() {
 function applyGrade(wordKey, grade) {
   const today = isoToday();
   const p = progressOf(wordKey);
+  if (grade === "exclude") {
+    p.excluded = true;
+    p.lastDate = today;
+    p.dueDate = "9999-12-31";
+    saveState();
+    return;
+  }
   p.timesSeen += 1;
   p.lastDate = today;
   p.dueDate = addDays(today, intervalDays(p.timesSeen, grade));
@@ -251,7 +264,7 @@ function renderCurrentWord() {
   node.querySelectorAll("button[data-grade]").forEach((btn) => {
     const grade = btn.dataset.grade;
     const eta = estimateReturnDays(w.key, grade);
-    btn.querySelector(".eta").textContent = etaLabel(eta);
+    btn.querySelector(".eta").textContent = grade === "exclude" ? "без повторов" : etaLabel(eta);
     btn.addEventListener("click", () => {
       applyGrade(w.key, grade);
       currentBatch[currentIndex].timesSeen = progressOf(w.key).timesSeen;
@@ -309,9 +322,10 @@ function runSearch() {
 function statsText() {
   const all = words.length;
   const items = Object.values(state.progress);
+  const excluded = items.filter((x) => x.excluded).length;
   const seen = items.filter((x) => x.timesSeen > 0).length;
   const due = items.filter((x) => x.dueDate <= isoToday()).length;
-  return `Всего: ${all}, изучено: ${seen}, к ревью сегодня: ${due}`;
+  return `Всего: ${all}, изучено: ${seen}, исключено: ${excluded}, к ревью сегодня: ${due}`;
 }
 
 function getLocalNotificationsPlugin() {
@@ -519,4 +533,3 @@ if ("serviceWorker" in navigator && !isNativeApp()) {
 }
 
 bootstrap();
-
