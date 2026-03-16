@@ -1,0 +1,2 @@
+"""Telegram vocabulary bot package."""
+
