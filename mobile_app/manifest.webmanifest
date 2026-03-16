@@ -4,8 +4,14 @@
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#eef2ff",
-  "theme_color": "#0f172a",
+  "theme_color": "#8b5e34",
   "description": "Локальное приложение для изучения слов из 48 Laws.",
-  "icons": []
+  "icons": [
+    {
+      "src": "./icon-book.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
-

@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
   <title>48 Laws Vocab</title>
+  <link rel="icon" href="icon-book.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app">
     <header class="top">
-      <h1>48 Laws Vocab</h1>
-      <p>Локальное приложение: 15 слов в день + поиск + ревью</p>
+      <div class="brand">
+        <img src="icon-book.svg" alt="Book icon" class="brand-icon">
+        <h1>48 Laws Vocab</h1>
+      </div>
+      <p>Одно слово за раз, как карточки из книги</p>
     </header>
 
     <section class="panel">
@@ -43,6 +47,12 @@
       <div class="hint" id="status">Загрузка...</div>
     </section>
 
+    <section class="word-nav">
+      <button id="btnPrevWord">Предыдущее</button>
+      <div id="wordCounter" class="counter">0 / 0</div>
+      <button id="btnNextWord">Следующее</button>
+    </section>
+
     <section id="cards" class="cards"></section>
   </main>
 
@@ -66,10 +76,10 @@
       <p class="example"></p>
       <p class="prompt">Задание: составьте свое предложение с этим словом.</p>
       <div class="actions">
-        <button data-grade="again">Again</button>
-        <button data-grade="hard">Hard</button>
-        <button data-grade="good">Good</button>
-        <button data-grade="easy">Easy</button>
+        <button data-grade="again"><span>Again</span><small class="eta"></small></button>
+        <button data-grade="hard"><span>Hard</span><small class="eta"></small></button>
+        <button data-grade="good"><span>Good</span><small class="eta"></small></button>
+        <button data-grade="easy"><span>Easy</span><small class="eta"></small></button>
       </div>
     </article>
   </template>
