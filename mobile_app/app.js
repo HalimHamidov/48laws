@@ -4,6 +4,7 @@ const DATA_URL = "./48laws_frequency_ru.json";
 const STORAGE_KEY = "vocab48_state_v2";
 const TODAY_KEY = "vocab48_today_v2";
 const REMINDER_KEY = "vocab48_reminder_v1";
+const REMINDER_ENABLED_KEY = "vocab48_reminder_enabled_v1";
 const REMINDER_ID = 48001;
 
 const $status = document.getElementById("status");
@@ -24,7 +25,7 @@ function normalizeText(value) {
   return String(value || "")
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 
@@ -48,6 +49,14 @@ function getReminderTime() {
 
 function setReminderTime(value) {
   localStorage.setItem(REMINDER_KEY, value);
+}
+
+function isReminderEnabled() {
+  return localStorage.getItem(REMINDER_ENABLED_KEY) === "1";
+}
+
+function setReminderEnabled(enabled) {
+  localStorage.setItem(REMINDER_ENABLED_KEY, enabled ? "1" : "0");
 }
 
 function progressOf(key) {
@@ -199,6 +208,17 @@ function searchWords(rawQuery, limit = 80) {
   return out;
 }
 
+function runSearch() {
+  const q = $searchInput.value.trim();
+  if (!q) {
+    const batch = loadTodayBatch() || pickBatch("today");
+    renderCards(enrichWithProgress(batch), "Сегодня");
+    return;
+  }
+  const found = searchWords(q, 80);
+  renderCards(enrichWithProgress(found), `Поиск: найдено ${found.length}`);
+}
+
 function statsText() {
   const all = words.length;
   const items = Object.values(state.progress);
@@ -209,6 +229,16 @@ function statsText() {
 
 function getLocalNotificationsPlugin() {
   return window.Capacitor?.Plugins?.LocalNotifications || null;
+}
+
+function nextDateFor(hour, minute) {
+  const now = new Date();
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  if (d <= now) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
 }
 
 async function enableDailyReminder(timeValue) {
@@ -226,11 +256,23 @@ async function enableDailyReminder(timeValue) {
   }
 
   try {
-    const perm = await plugin.requestPermissions();
+    const check = await plugin.checkPermissions();
+    const perm = check.display === "granted" ? check : await plugin.requestPermissions();
     if (perm.display !== "granted") {
       $status.textContent = "Разрешение на уведомления не выдано.";
       return;
     }
+
+    if (plugin.createChannel) {
+      await plugin.createChannel({
+        id: "daily_words",
+        name: "Daily Words",
+        description: "Daily reminder for vocabulary practice",
+        importance: 5,
+      });
+    }
+
+    const at = nextDateFor(hour, minute);
     await plugin.cancel({ notifications: [{ id: REMINDER_ID }] });
     await plugin.schedule({
       notifications: [
@@ -238,15 +280,17 @@ async function enableDailyReminder(timeValue) {
           id: REMINDER_ID,
           title: "48 Laws Vocab",
           body: "Открой приложение и повтори новые слова.",
+          channelId: "daily_words",
           schedule: {
-            on: { hour, minute },
+            at,
             repeats: true,
-            allowWhileIdle: true,
+            every: "day",
           },
         },
       ],
     });
     setReminderTime(timeValue);
+    setReminderEnabled(true);
     $status.textContent = `Ежедневное напоминание включено на ${timeValue}.`;
   } catch (err) {
     $status.textContent = `Ошибка напоминания: ${err.message}`;
@@ -261,6 +305,7 @@ async function disableDailyReminder() {
   }
   try {
     await plugin.cancel({ notifications: [{ id: REMINDER_ID }] });
+    setReminderEnabled(false);
     $status.textContent = "Ежедневное напоминание выключено.";
   } catch (err) {
     $status.textContent = `Ошибка отключения: ${err.message}`;
@@ -341,20 +386,41 @@ function initButtons() {
     storeTodayBatch(batch.map((x) => x.key));
   });
 
+  document.getElementById("btnSearch").addEventListener("click", runSearch);
+  document.getElementById("btnBottomSearch").addEventListener("click", () => {
+    $searchInput.focus();
+    runSearch();
+  });
+
+  $searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runSearch();
+    }
+  });
+
   let timer = null;
   $searchInput.addEventListener("input", () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      const q = $searchInput.value.trim();
-      if (!q) {
-        const batch = loadTodayBatch() || pickBatch("today");
-        renderCards(enrichWithProgress(batch), "Сегодня");
-        return;
-      }
-      const found = searchWords(q, 80);
-      renderCards(enrichWithProgress(found), `Поиск: найдено ${found.length}`);
+      runSearch();
     }, 120);
   });
+
+  const openToday = () => {
+    const cached = loadTodayBatch();
+    const batch = cached || pickBatch("today");
+    if (!cached) storeTodayBatch(batch.map((x) => x.key));
+    renderCards(enrichWithProgress(batch), "Сегодня");
+  };
+
+  const openReview = () => {
+    const batch = pickBatch("review");
+    renderCards(enrichWithProgress(batch), "Ревью");
+  };
+
+  document.getElementById("btnBottomToday").addEventListener("click", openToday);
+  document.getElementById("btnBottomReview").addEventListener("click", openReview);
 }
 
 async function bootstrap() {
@@ -368,6 +434,10 @@ async function bootstrap() {
     storeTodayBatch(firstBatch.map((x) => x.key));
     renderCards(enrichWithProgress(firstBatch), "Сегодня");
     $status.textContent = `Готово. ${statsText()}`;
+
+    if (isReminderEnabled()) {
+      await enableDailyReminder($reminderTime.value || "20:00");
+    }
   } catch (err) {
     $status.textContent = `Ошибка: ${err.message}`;
   }
@@ -380,4 +450,3 @@ if ("serviceWorker" in navigator) {
 }
 
 bootstrap();
-

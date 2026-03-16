@@ -31,9 +31,9 @@ body {
   max-width: 880px;
   margin: 0 auto;
   padding:
-    max(12px, env(safe-area-inset-top))
+    max(24px, calc(env(safe-area-inset-top) + 16px))
     max(12px, env(safe-area-inset-right))
-    max(12px, env(safe-area-inset-bottom))
+    max(92px, calc(env(safe-area-inset-bottom) + 82px))
     max(12px, env(safe-area-inset-left));
 }
 
@@ -56,7 +56,7 @@ body {
   background: rgba(248, 250, 252, 0.92);
   backdrop-filter: blur(4px);
   position: sticky;
-  top: 0;
+  top: max(4px, env(safe-area-inset-top));
   z-index: 3;
 }
 
@@ -68,7 +68,7 @@ body {
 }
 
 .search-row {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
 }
 
 .reminder-row {
@@ -114,6 +114,28 @@ button:active {
   margin-top: 12px;
   display: grid;
   gap: 10px;
+  padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.bottom-nav button {
+  min-height: 46px;
+  font-size: 15px;
 }
 
 .card {
@@ -183,5 +205,9 @@ button:active {
   .reminder-row {
     grid-template-columns: 1fr;
   }
-}
 
+  .bottom-nav {
+    left: 6px;
+    right: 6px;
+  }
+}

@@ -18,6 +18,7 @@
     <section class="panel">
       <div class="row search-row">
         <input id="searchInput" type="search" placeholder="Поиск по 15400 словам (word / перевод)" autocomplete="off">
+        <button id="btnSearch">Поиск</button>
         <button id="btnClearSearch">Очистить</button>
       </div>
 
@@ -45,6 +46,12 @@
     <section id="cards" class="cards"></section>
   </main>
 
+  <nav class="bottom-nav">
+    <button id="btnBottomToday">Сегодня</button>
+    <button id="btnBottomSearch">Поиск</button>
+    <button id="btnBottomReview">Ревью</button>
+  </nav>
+
   <template id="cardTemplate">
     <article class="card">
       <div class="card-head">
@@ -70,4 +77,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
