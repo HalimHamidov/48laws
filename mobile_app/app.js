@@ -19,6 +19,27 @@ const AUTO_EXCLUDE_WORDS = new Set([
   "xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx","http","www","com"
 ]);
 
+const AUTO_EXCLUDE_NAMES = new Set([
+  "louis","kissinger","napoleon","caesar","borgia","machiavelli","sun","tzu","alexander","cleopatra",
+  "metternich","fouquet","versailles","tsao","stalin","hitler","churchill","roosevelt","nixon","mao",
+  "socrates","plato","aristotle","seneca","cicero","shakespeare","voltaire","newton","einstein","darwin",
+  "washington","lincoln","franklin","medici","richelieu","charles","henry","elizabeth","victoria","joseph",
+  "von","de","la","du","ibn"
+]);
+
+const AUTO_EXCLUDE_A1 = new Set([
+  "go","come","make","take","give","get","put","say","tell","ask","work","play","look","see","watch","read",
+  "write","speak","talk","listen","live","love","like","want","need","use","find","call","try","help","start",
+  "stop","open","close","walk","run","sit","stand","eat","drink","buy","sell","pay","keep","leave","stay",
+  "home","house","room","door","window","table","chair","street","city","country","school","book","water",
+  "food","money","time","day","night","morning","evening","year","week","month","today","tomorrow","yesterday",
+  "man","woman","boy","girl","child","family","friend","people","person","name","place","thing","world","life",
+  "good","bad","big","small","new","old","young","long","short","high","low","right","left","first","last",
+  "same","different","important","easy","hard","early","late","happy","sad","hot","cold","full","empty","free",
+  "true","false","yes","ok","sorry","please","thanks","hello","hi","bye","maybe","really","always","never",
+  "often","sometimes","here","there","inside","outside","around","near","far","next","back","front"
+]);
+
 const LAW_MORALS = [
   "Сила в сдержанности: не затмевай того, кто выше тебя.",
   "Доверяй делам, а не красивым словам.",
@@ -162,8 +183,11 @@ function progressOf(key) {
 function shouldAutoExclude(word) {
   if (!word) return true;
   if (AUTO_EXCLUDE_WORDS.has(word)) return true;
+  if (AUTO_EXCLUDE_NAMES.has(word)) return true;
+  if (AUTO_EXCLUDE_A1.has(word)) return true;
   if (/^[a-z]$/.test(word)) return true;
   if (/^[ivxlcdm]+$/.test(word)) return true;
+  if (/^[a-z]{1,2}$/.test(word)) return true;
   if (word.length <= 1) return true;
   return false;
 }
