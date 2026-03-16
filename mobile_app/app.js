@@ -346,6 +346,7 @@ function renderCurrentWord() {
     });
   });
 
+  attachSwipeNavigation(node);
   $cards.appendChild(node);
 }
 
@@ -368,6 +369,56 @@ function goPrevWord() {
     currentIndex -= 1;
     renderCurrentWord();
   }
+}
+
+function attachSwipeNavigation(cardEl) {
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+  let decided = false;
+  let isHorizontal = false;
+  const MIN_SWIPE_X = 55;
+  const MIN_AXIS_DIFF = 16;
+
+  cardEl.addEventListener("touchstart", (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    tracking = true;
+    decided = false;
+    isHorizontal = false;
+  }, { passive: true });
+
+  cardEl.addEventListener("touchmove", (e) => {
+    if (!tracking || !e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (!decided && (Math.abs(dx) > MIN_AXIS_DIFF || Math.abs(dy) > MIN_AXIS_DIFF)) {
+      decided = true;
+      isHorizontal = Math.abs(dx) > Math.abs(dy);
+    }
+  }, { passive: true });
+
+  cardEl.addEventListener("touchend", (e) => {
+    if (!tracking || !e.changedTouches || e.changedTouches.length !== 1) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    tracking = false;
+
+    if (!isHorizontal || Math.abs(dx) < MIN_SWIPE_X || Math.abs(dx) < Math.abs(dy)) {
+      return;
+    }
+
+    if (dx < 0) {
+      goPrevWord(); // swipe left -> previous
+    } else {
+      goNextWord(false); // swipe right -> next
+    }
+  }, { passive: true });
 }
 
 function searchWords(rawQuery, limit = 200) {
