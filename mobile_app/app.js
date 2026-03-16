@@ -40,6 +40,16 @@ const AUTO_EXCLUDE_A1 = new Set([
   "often","sometimes","here","there","inside","outside","around","near","far","next","back","front"
 ]);
 
+const AUTO_EXCLUDE_STOPWORDS = new Set([
+  "about","above","after","against","all","any","both","each","few","more","most","other","some","such","only",
+  "own","same","so","than","too","very","can","just","don","should","now","off","once","because","being","below",
+  "between","during","further","into","through","until","while","ourselves","yourself","yourselves","himself",
+  "herself","itself","themselves","myself","ours","hers","theirs","its","whose","whereas","wherever","whenever",
+  "whatever","whoever","whichever","without","within","upon","via","across","along","among","amongst","around",
+  "behind","beside","besides","beyond","despite","except","inside","outside","toward","towards","underneath",
+  "although","however","therefore","meanwhile","otherwise","perhaps","indeed","already","almost","rather","quite"
+]);
+
 const LAW_MORALS = [
   "Сила в сдержанности: не затмевай того, кто выше тебя.",
   "Доверяй делам, а не красивым словам.",
@@ -185,6 +195,7 @@ function shouldAutoExclude(word) {
   if (AUTO_EXCLUDE_WORDS.has(word)) return true;
   if (AUTO_EXCLUDE_NAMES.has(word)) return true;
   if (AUTO_EXCLUDE_A1.has(word)) return true;
+  if (AUTO_EXCLUDE_STOPWORDS.has(word)) return true;
   if (/^[a-z]$/.test(word)) return true;
   if (/^[ivxlcdm]+$/.test(word)) return true;
   if (/^[a-z]{1,2}$/.test(word)) return true;
@@ -438,9 +449,9 @@ function attachSwipeNavigation(cardEl) {
     }
 
     if (dx < 0) {
-      goPrevWord(); // swipe left -> previous
+      goNextWord(false); // swipe left -> next
     } else {
-      goNextWord(false); // swipe right -> next
+      goPrevWord(); // swipe right -> previous
     }
   }, { passive: true });
 }
@@ -655,8 +666,9 @@ async function loadData() {
 
 function openToday() {
   const cached = loadTodayBatch();
-  const batch = cached || pickBatch("today");
-  if (!cached) storeTodayBatch(batch.map((x) => x.key));
+  const filteredCached = cached ? cached.filter((w) => !progressOf(w.key).excluded) : null;
+  const batch = (filteredCached && filteredCached.length > 0) ? filteredCached : pickBatch("today");
+  if (!filteredCached) storeTodayBatch(batch.map((x) => x.key));
   setBatch(batch, "Сегодня");
 }
 
