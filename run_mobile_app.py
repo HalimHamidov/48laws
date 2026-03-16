@@ -3,11 +3,14 @@ from __future__ import annotations
 import http.server
 import socket
 import socketserver
+import shutil
 from pathlib import Path
 
 
 PORT = 8000
 ROOT = Path(__file__).resolve().parent
+SRC = ROOT / "48laws_frequency_ru.json"
+DST = ROOT / "mobile_app" / "48laws_frequency_ru.json"
 
 
 def get_local_ip() -> str:
@@ -22,6 +25,11 @@ def get_local_ip() -> str:
 
 
 def main() -> None:
+    if not SRC.exists():
+        raise SystemExit(f"Missing source JSON: {SRC}")
+    DST.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SRC, DST)
+
     handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("0.0.0.0", PORT), handler) as httpd:
         ip = get_local_ip()
@@ -34,4 +42,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

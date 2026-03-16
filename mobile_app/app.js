@@ -1,5 +1,5 @@
 const WORDS_PER_DAY = 15;
-const DATA_URL = "../48laws_frequency_ru.json";
+const DATA_URL = "./48laws_frequency_ru.json";
 
 const $status = document.getElementById("status");
 const $cards = document.getElementById("cards");
@@ -266,4 +266,3 @@ if ("serviceWorker" in navigator) {
 }
 
 bootstrap();
-

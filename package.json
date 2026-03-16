@@ -1,0 +1,31 @@
+{
+  "name": "48laws",
+  "version": "1.0.0",
+  "description": "Production-ready Python Telegram bot that sends daily vocabulary from `48laws_frequency_ru.json` with spaced-review friendly scheduling.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "sync:data": "py sync_mobile_data.py",
+    "android:sync": "npm run sync:data && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HalimHamidov/48laws.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/HalimHamidov/48laws/issues"
+  },
+  "homepage": "https://github.com/HalimHamidov/48laws#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0"
+  }
+}

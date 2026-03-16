@@ -137,3 +137,35 @@ http://<YOUR_PC_IP>:8000/mobile_app/
 3. In Chrome, use "Add to Home screen" for app-like launch.
 
 This app uses `48laws_frequency_ru.json`, shows 15 words/day, tracks progress locally, and supports review flow.
+
+## Build APK (No Google Play)
+
+This project now includes a Capacitor Android shell in `android/`.
+
+1. Install Android Studio (includes SDK + emulator/tools).
+2. Sync app assets and Android project:
+
+```powershell
+npm install
+npm run android:sync
+```
+
+3. Open native project:
+
+```powershell
+npm run android:open
+```
+
+4. In Android Studio:
+- wait for Gradle sync
+- `Build` -> `Build APK(s)`
+- APK output usually appears in:
+  - `android/app/build/outputs/apk/debug/app-debug.apk`
+
+5. Install on phone:
+- enable `Install unknown apps`
+- transfer and open `app-debug.apk`
+
+Notes:
+- Before every new APK build after JSON/UI changes, run `npm run android:sync`.
+- JSON source is `48laws_frequency_ru.json` and is copied to `mobile_app/48laws_frequency_ru.json`.

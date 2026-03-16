@@ -4,7 +4,7 @@ const ASSETS = [
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "../48laws_frequency_ru.json"
+  "./48laws_frequency_ru.json"
 ];
 
 self.addEventListener("install", (event) => {
@@ -35,4 +35,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-
