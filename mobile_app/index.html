@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>48 Laws Vocab</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <h1>48 Laws Vocab</h1>
+      <p>15 слов в день, локально, без Telegram</p>
+    </header>
+
+    <section class="panel">
+      <div class="row">
+        <button id="btnToday">Сегодня</button>
+        <button id="btnNext">Следующая пачка</button>
+        <button id="btnReview">Ревью</button>
+      </div>
+      <div class="row">
+        <button id="btnStats">Статистика</button>
+        <button id="btnReset" class="danger">Сброс прогресса</button>
+      </div>
+      <div class="hint" id="status">Загрузка...</div>
+    </section>
+
+    <section id="cards" class="cards"></section>
+  </main>
+
+  <template id="cardTemplate">
+    <article class="card">
+      <div class="card-head">
+        <span class="idx"></span>
+        <span class="badge"></span>
+      </div>
+      <h2 class="word"></h2>
+      <details>
+        <summary>Показать перевод</summary>
+        <p class="translation"></p>
+      </details>
+      <p class="example"></p>
+      <p class="prompt">Вопрос: составьте свое предложение с этим словом.</p>
+      <div class="actions">
+        <button data-grade="again">Again</button>
+        <button data-grade="hard">Hard</button>
+        <button data-grade="good">Good</button>
+        <button data-grade="easy">Easy</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

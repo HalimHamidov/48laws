@@ -1,0 +1,11 @@
+{
+  "name": "48 Laws Vocab",
+  "short_name": "48Vocab",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#eef2ff",
+  "theme_color": "#0f172a",
+  "description": "Локальное приложение для изучения слов из 48 Laws.",
+  "icons": []
+}
+

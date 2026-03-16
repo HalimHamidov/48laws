@@ -117,3 +117,23 @@ py main.py
 - The bot accepts only the configured `TELEGRAM_CHAT_ID`.
 - Existing `.env` non-standard keys are partially supported by aliases, but standard keys are recommended.
 - If JSON is malformed, the bot exits with a clear error message.
+
+## Android Without Telegram (Local Web App)
+
+If Telegram is unavailable, you can run a local Android-friendly app from this repo:
+
+1. Start local server:
+
+```powershell
+py run_mobile_app.py
+```
+
+2. On Android (same Wi-Fi), open shown URL:
+
+```text
+http://<YOUR_PC_IP>:8000/mobile_app/
+```
+
+3. In Chrome, use "Add to Home screen" for app-like launch.
+
+This app uses `48laws_frequency_ru.json`, shows 15 words/day, tracks progress locally, and supports review flow.
