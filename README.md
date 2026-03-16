@@ -1,4 +1,4 @@
-# 48 Laws Vocabulary Telegram Bot
+﻿# 48 Laws Vocabulary Telegram Bot
 
 Production-ready Python Telegram bot that sends daily vocabulary from `48laws_frequency_ru.json` with spaced-review friendly scheduling.
 
@@ -96,20 +96,20 @@ py main.py
 
 ```text
 .
-├─ bot/
-│  ├─ __init__.py
-│  ├─ app.py
-│  ├─ config.py
-│  ├─ data_loader.py
-│  ├─ formatting.py
-│  ├─ planner.py
-│  └─ storage.py
-├─ 48laws_frequency_ru.json
-├─ .env.example
-├─ .gitignore
-├─ main.py
-├─ requirements.txt
-└─ INSTRUCTION.md
+|-- bot/
+|   |-- __init__.py
+|   |-- app.py
+|   |-- config.py
+|   |-- data_loader.py
+|   |-- formatting.py
+|   |-- planner.py
+|   `-- storage.py
+|-- 48laws_frequency_ru.json
+|-- .env.example
+|-- .gitignore
+|-- main.py
+|-- requirements.txt
+`-- INSTRUCTION.md
 ```
 
 ## Notes
@@ -117,4 +117,3 @@ py main.py
 - The bot accepts only the configured `TELEGRAM_CHAT_ID`.
 - Existing `.env` non-standard keys are partially supported by aliases, but standard keys are recommended.
 - If JSON is malformed, the bot exits with a clear error message.
-
