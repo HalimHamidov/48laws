@@ -1,12 +1,16 @@
 const WORDS_PER_DAY = 15;
 const DATA_URL = "./48laws_frequency_ru.json";
 
+const STORAGE_KEY = "vocab48_state_v2";
+const TODAY_KEY = "vocab48_today_v2";
+const REMINDER_KEY = "vocab48_reminder_v1";
+const REMINDER_ID = 48001;
+
 const $status = document.getElementById("status");
 const $cards = document.getElementById("cards");
+const $searchInput = document.getElementById("searchInput");
+const $reminderTime = document.getElementById("reminderTime");
 const cardTpl = document.getElementById("cardTemplate");
-
-const STORAGE_KEY = "vocab48_state_v1";
-const TODAY_KEY = "vocab48_today_v1";
 
 let words = [];
 let byKey = new Map();
@@ -16,11 +20,17 @@ function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim();
+}
+
 function readState() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    return { progress: {} };
-  }
+  if (!raw) return { progress: {} };
   try {
     return JSON.parse(raw);
   } catch {
@@ -32,6 +42,27 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function getReminderTime() {
+  return localStorage.getItem(REMINDER_KEY) || "20:00";
+}
+
+function setReminderTime(value) {
+  localStorage.setItem(REMINDER_KEY, value);
+}
+
+function progressOf(key) {
+  if (!state.progress[key]) {
+    state.progress[key] = { timesSeen: 0, dueDate: isoToday(), lastDate: null };
+  }
+  return state.progress[key];
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function intervalDays(timesSeen, grade) {
   const map = {
     again: 1,
@@ -40,19 +71,6 @@ function intervalDays(timesSeen, grade) {
     easy: [4, 7, 14, 30, 45][Math.min(timesSeen, 4)],
   };
   return map[grade] || 2;
-}
-
-function addDays(isoDate, days) {
-  const d = new Date(isoDate + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function progressOf(key) {
-  if (!state.progress[key]) {
-    state.progress[key] = { timesSeen: 0, dueDate: isoToday(), lastDate: null };
-  }
-  return state.progress[key];
 }
 
 function dueWords(today, limit) {
@@ -97,15 +115,12 @@ function pickBatch(mode) {
   const used = new Set();
   let batch = [];
 
-  if (mode === "review") {
-    batch = dueWords(today, WORDS_PER_DAY);
-    return batch;
-  }
+  if (mode === "review") return dueWords(today, WORDS_PER_DAY);
 
   const reviewTarget = Math.max(1, Math.round(WORDS_PER_DAY * 0.4));
-  const rev = dueWords(today, reviewTarget);
-  rev.forEach((w) => used.add(w.key));
-  batch.push(...rev);
+  const review = dueWords(today, reviewTarget);
+  review.forEach((w) => used.add(w.key));
+  batch.push(...review);
 
   if (batch.length < WORDS_PER_DAY) {
     batch.push(...newWords(WORDS_PER_DAY - batch.length, used));
@@ -117,13 +132,7 @@ function pickBatch(mode) {
 }
 
 function storeTodayBatch(keys) {
-  localStorage.setItem(
-    TODAY_KEY,
-    JSON.stringify({
-      date: isoToday(),
-      keys,
-    })
-  );
+  localStorage.setItem(TODAY_KEY, JSON.stringify({ date: isoToday(), keys }));
 }
 
 function loadTodayBatch() {
@@ -132,9 +141,7 @@ function loadTodayBatch() {
   try {
     const parsed = JSON.parse(raw);
     if (parsed.date !== isoToday()) return null;
-    return parsed.keys
-      .map((k) => byKey.get(k))
-      .filter(Boolean);
+    return parsed.keys.map((k) => byKey.get(k)).filter(Boolean);
   } catch {
     return null;
   }
@@ -149,6 +156,10 @@ function applyGrade(wordKey, grade) {
   saveState();
 }
 
+function enrichWithProgress(list) {
+  return list.map((w) => ({ ...w, timesSeen: progressOf(w.key).timesSeen }));
+}
+
 function renderCards(batch, modeLabel) {
   $cards.innerHTML = "";
   $status.textContent = `${modeLabel}: ${batch.length} слов`;
@@ -160,7 +171,7 @@ function renderCards(batch, modeLabel) {
     node.querySelector(".word").textContent = w.word;
     node.querySelector(".translation").textContent = w.translation_ru || "—";
     node.querySelector(".example").textContent = w.example_from_book
-      ? `Example: ${w.example_from_book}${w.example_page ? " (p." + w.example_page + ")" : ""}`
+      ? `Example: ${w.example_from_book}${w.example_page ? ` (p.${w.example_page})` : ""}`
       : "Example: —";
 
     node.querySelectorAll("button[data-grade]").forEach((btn) => {
@@ -175,6 +186,19 @@ function renderCards(batch, modeLabel) {
   });
 }
 
+function searchWords(rawQuery, limit = 80) {
+  const q = normalizeText(rawQuery);
+  if (!q) return [];
+  const out = [];
+  for (const w of words) {
+    if (out.length >= limit) break;
+    if (w.searchWord.includes(q) || w.searchTranslation.includes(q)) {
+      out.push(w);
+    }
+  }
+  return out;
+}
+
 function statsText() {
   const all = words.length;
   const items = Object.values(state.progress);
@@ -183,34 +207,92 @@ function statsText() {
   return `Всего: ${all}, изучено: ${seen}, к ревью сегодня: ${due}`;
 }
 
+function getLocalNotificationsPlugin() {
+  return window.Capacitor?.Plugins?.LocalNotifications || null;
+}
+
+async function enableDailyReminder(timeValue) {
+  const plugin = getLocalNotificationsPlugin();
+  if (!plugin) {
+    $status.textContent = "Напоминания доступны в Android APK (Capacitor).";
+    return;
+  }
+  const [hourStr, minuteStr] = String(timeValue || "20:00").split(":");
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    $status.textContent = "Неверный формат времени напоминания.";
+    return;
+  }
+
+  try {
+    const perm = await plugin.requestPermissions();
+    if (perm.display !== "granted") {
+      $status.textContent = "Разрешение на уведомления не выдано.";
+      return;
+    }
+    await plugin.cancel({ notifications: [{ id: REMINDER_ID }] });
+    await plugin.schedule({
+      notifications: [
+        {
+          id: REMINDER_ID,
+          title: "48 Laws Vocab",
+          body: "Открой приложение и повтори новые слова.",
+          schedule: {
+            on: { hour, minute },
+            repeats: true,
+            allowWhileIdle: true,
+          },
+        },
+      ],
+    });
+    setReminderTime(timeValue);
+    $status.textContent = `Ежедневное напоминание включено на ${timeValue}.`;
+  } catch (err) {
+    $status.textContent = `Ошибка напоминания: ${err.message}`;
+  }
+}
+
+async function disableDailyReminder() {
+  const plugin = getLocalNotificationsPlugin();
+  if (!plugin) {
+    $status.textContent = "Напоминания доступны в Android APK (Capacitor).";
+    return;
+  }
+  try {
+    await plugin.cancel({ notifications: [{ id: REMINDER_ID }] });
+    $status.textContent = "Ежедневное напоминание выключено.";
+  } catch (err) {
+    $status.textContent = `Ошибка отключения: ${err.message}`;
+  }
+}
+
 async function loadData() {
   const res = await fetch(DATA_URL, { cache: "no-store" });
-  if (!res.ok) throw new Error("Не удалось прочитать JSON");
+  if (!res.ok) throw new Error("Не удалось загрузить JSON");
   const payload = await res.json();
   const rows = Array.isArray(payload) ? payload : payload.words;
   if (!Array.isArray(rows)) throw new Error("Неверная структура JSON");
 
   words = rows
-    .map((r, i) => ({
-      key: String((r.word || r.term || "")).trim().toLowerCase(),
-      rank: Number(r.rank || i + 1),
-      word: r.word || r.term || "",
-      translation_ru: r.translation_ru || r.translation || null,
-      example_from_book: r.example_from_book || r.example || null,
-      example_page: r.example_page || null,
-      timesSeen: 0,
-    }))
+    .map((r, i) => {
+      const word = r.word || r.term || "";
+      const tr = r.translation_ru || r.translation || "";
+      return {
+        key: String(word).trim().toLowerCase(),
+        rank: Number(r.rank || i + 1),
+        word,
+        translation_ru: tr || null,
+        example_from_book: r.example_from_book || r.example || null,
+        example_page: r.example_page || null,
+        searchWord: normalizeText(word),
+        searchTranslation: normalizeText(tr),
+      };
+    })
     .filter((w) => w.key);
 
   words.sort((a, b) => a.rank - b.rank);
   byKey = new Map(words.map((w) => [w.key, w]));
-}
-
-function enrichWithProgress(batch) {
-  return batch.map((w) => ({
-    ...w,
-    timesSeen: progressOf(w.key).timesSeen,
-  }));
 }
 
 function initButtons() {
@@ -241,7 +323,37 @@ function initButtons() {
     localStorage.removeItem(TODAY_KEY);
     state = readState();
     $cards.innerHTML = "";
-    $status.textContent = "Прогресс сброшен";
+    $status.textContent = "Прогресс сброшен.";
+  });
+
+  document.getElementById("btnEnableReminder").addEventListener("click", async () => {
+    await enableDailyReminder($reminderTime.value || "20:00");
+  });
+
+  document.getElementById("btnDisableReminder").addEventListener("click", async () => {
+    await disableDailyReminder();
+  });
+
+  document.getElementById("btnClearSearch").addEventListener("click", () => {
+    $searchInput.value = "";
+    const batch = loadTodayBatch() || pickBatch("today");
+    renderCards(enrichWithProgress(batch), "Сегодня");
+    storeTodayBatch(batch.map((x) => x.key));
+  });
+
+  let timer = null;
+  $searchInput.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const q = $searchInput.value.trim();
+      if (!q) {
+        const batch = loadTodayBatch() || pickBatch("today");
+        renderCards(enrichWithProgress(batch), "Сегодня");
+        return;
+      }
+      const found = searchWords(q, 80);
+      renderCards(enrichWithProgress(found), `Поиск: найдено ${found.length}`);
+    }, 120);
   });
 }
 
@@ -249,13 +361,15 @@ async function bootstrap() {
   try {
     state = readState();
     await loadData();
+    $reminderTime.value = getReminderTime();
     initButtons();
+
     const firstBatch = loadTodayBatch() || pickBatch("today");
     storeTodayBatch(firstBatch.map((x) => x.key));
     renderCards(enrichWithProgress(firstBatch), "Сегодня");
     $status.textContent = `Готово. ${statsText()}`;
   } catch (err) {
-    $status.textContent = "Ошибка: " + err.message;
+    $status.textContent = `Ошибка: ${err.message}`;
   }
 }
 
@@ -266,3 +380,4 @@ if ("serviceWorker" in navigator) {
 }
 
 bootstrap();
+

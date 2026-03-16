@@ -12,8 +12,13 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
+}
+
+body {
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   color: var(--ink);
   background:
@@ -23,34 +28,62 @@ body {
 }
 
 .app {
-  max-width: 760px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 16px;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
 }
 
 .top h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: clamp(22px, 4vw, 30px);
 }
 
 .top p {
   margin: 4px 0 0;
   color: var(--muted);
+  font-size: clamp(13px, 2.5vw, 16px);
 }
 
 .panel {
-  margin-top: 14px;
+  margin-top: 12px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #f8fafc;
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(4px);
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
 .row {
-  display: flex;
+  display: grid;
   gap: 8px;
   margin-bottom: 8px;
-  flex-wrap: wrap;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.search-row {
+  grid-template-columns: 1fr auto;
+}
+
+.reminder-row {
+  grid-template-columns: auto 110px 1fr 1fr;
+  align-items: center;
+}
+
+input[type="search"],
+input[type="time"] {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  padding: 10px;
+  min-width: 0;
 }
 
 button {
@@ -58,8 +91,9 @@ button {
   background: var(--card);
   color: var(--ink);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-weight: 600;
+  min-height: 42px;
 }
 
 button:active {
@@ -77,7 +111,7 @@ button:active {
 }
 
 .cards {
-  margin-top: 14px;
+  margin-top: 12px;
   display: grid;
   gap: 10px;
 }
@@ -98,13 +132,15 @@ button:active {
 
 .word {
   margin: 6px 0;
-  font-size: 24px;
+  font-size: clamp(20px, 5vw, 26px);
+  word-break: break-word;
 }
 
 .translation,
 .example,
 .prompt {
   margin: 8px 0 0;
+  line-height: 1.4;
 }
 
 .badge {
@@ -116,14 +152,36 @@ button:active {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 460px) {
   .actions {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-row {
+    grid-template-columns: 1fr;
   }
 }
 

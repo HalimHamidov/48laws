@@ -136,7 +136,7 @@ http://<YOUR_PC_IP>:8000/mobile_app/
 
 3. In Chrome, use "Add to Home screen" for app-like launch.
 
-This app uses `48laws_frequency_ru.json`, shows 15 words/day, tracks progress locally, and supports review flow.
+This app uses `48laws_frequency_ru.json`, shows 15 words/day, tracks progress locally, supports review flow, and includes search across all words.
 
 ## Build APK (No Google Play)
 
@@ -169,3 +169,4 @@ npm run android:open
 Notes:
 - Before every new APK build after JSON/UI changes, run `npm run android:sync`.
 - JSON source is `48laws_frequency_ru.json` and is copied to `mobile_app/48laws_frequency_ru.json`.
+- Daily reminder notifications are available inside Android APK via Capacitor Local Notifications.
