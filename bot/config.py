@@ -5,11 +5,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from dotenv import load_dotenv
-
 
 class ConfigError(ValueError):
     pass
+
+
+def _load_loose_dotenv(dotenv_path: Path = Path(".env")) -> None:
+    if not dotenv_path.exists():
+        return
+    try:
+        raw = dotenv_path.read_text(encoding="utf-8")
+    except Exception:
+        return
+
+    for line in raw.splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+
+        if "=" in entry:
+            key, value = entry.split("=", 1)
+        elif ":" in entry:
+            key, value = entry.split(":", 1)
+        else:
+            continue
+
+        key = key.strip()
+        value = value.strip().strip("\"'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
 
 
 def _get_env(*keys: str, default: str | None = None) -> str | None:
@@ -51,7 +75,7 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    load_dotenv()
+    _load_loose_dotenv()
 
     # Backward-compatible aliases support current local .env variants.
     token = _get_env("TELEGRAM_BOT_TOKEN", "api token")
@@ -81,4 +105,3 @@ def load_settings() -> Settings:
         json_path=Path("48laws_frequency_ru.json"),
         db_path=Path("bot_state.sqlite3"),
     )
-
