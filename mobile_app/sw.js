@@ -1,4 +1,4 @@
-const CACHE_NAME = "vocab48-cache-v1";
+const CACHE_NAME = "vocab48-cache-v2";
 const ASSETS = [
   "./index.html",
   "./styles.css",
@@ -8,7 +8,9 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -19,7 +21,7 @@ self.addEventListener("activate", (event) => {
           .filter((k) => k !== CACHE_NAME)
           .map((k) => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
 });
 

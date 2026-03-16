@@ -1,5 +1,6 @@
 const WORDS_PER_DAY = 15;
 const DATA_URL = "./48laws_frequency_ru.json";
+const APP_BUILD = "2026-03-16-b";
 
 const STORAGE_KEY = "vocab48_state_v2";
 const TODAY_KEY = "vocab48_today_v2";
@@ -16,6 +17,32 @@ const cardTpl = document.getElementById("cardTemplate");
 let words = [];
 let byKey = new Map();
 let state = null;
+
+function isNativeApp() {
+  try {
+    if (!window.Capacitor) return false;
+    if (typeof window.Capacitor.isNativePlatform === "function") {
+      return window.Capacitor.isNativePlatform();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function clearServiceWorkerCaches() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+  } catch {}
+  if ("caches" in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch {}
+  }
+}
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -425,6 +452,9 @@ function initButtons() {
 
 async function bootstrap() {
   try {
+    if (isNativeApp()) {
+      await clearServiceWorkerCaches();
+    }
     state = readState();
     await loadData();
     $reminderTime.value = getReminderTime();
@@ -433,7 +463,7 @@ async function bootstrap() {
     const firstBatch = loadTodayBatch() || pickBatch("today");
     storeTodayBatch(firstBatch.map((x) => x.key));
     renderCards(enrichWithProgress(firstBatch), "Сегодня");
-    $status.textContent = `Готово. ${statsText()}`;
+    $status.textContent = `Готово (build ${APP_BUILD}). ${statsText()}`;
 
     if (isReminderEnabled()) {
       await enableDailyReminder($reminderTime.value || "20:00");
@@ -443,7 +473,7 @@ async function bootstrap() {
   }
 }
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !isNativeApp()) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
