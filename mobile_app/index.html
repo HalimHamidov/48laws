@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -16,51 +16,65 @@
         <img src="icon-book.svg" alt="Book icon" class="brand-icon">
         <h1>48 Laws Vocab</h1>
       </div>
-      <p>Одно слово за раз, как карточки из книги</p>
+      <p>One word at a time, like book flashcards</p>
     </header>
+
+    <section id="cards" class="cards"></section>
+
+    <section class="word-nav">
+      <button id="btnPrevWord">Previous</button>
+      <div id="wordCounter" class="counter">0 / 0</div>
+      <button id="btnNextWord">Next</button>
+    </section>
 
     <section class="panel">
       <div class="row search-row">
-        <input id="searchInput" type="search" placeholder="Поиск по 15400 словам (word / перевод)" autocomplete="off">
-        <button id="btnSearch">Поиск</button>
-        <button id="btnClearSearch">Очистить</button>
+        <input id="searchInput" type="search" placeholder="Search in 15400 words (word / translation)" autocomplete="off">
+        <button id="btnSearch">Search</button>
+        <button id="btnClearSearch">Clear</button>
       </div>
 
-      <div class="row">
-        <button id="btnToday">Сегодня</button>
-        <button id="btnNext">Следующая пачка</button>
-        <button id="btnReview">Ревью</button>
+      <div class="controls-grid">
+        <button id="btnToday">Today</button>
+        <button id="btnNext">Next Batch</button>
+        <button id="btnStats">Stats</button>
+        <button id="btnHelp">Help</button>
       </div>
 
-      <div class="row">
-        <button id="btnStats">Статистика</button>
-        <button id="btnReset" class="danger">Сброс прогресса</button>
-      </div>
-
-      <div class="row reminder-row">
-        <label for="reminderTime">Напоминание:</label>
+      <div class="reminder-compact">
+        <label for="reminderTime">Reminder</label>
+        <button id="btnDisableReminder">Off</button>
         <input id="reminderTime" type="time" value="20:00">
-        <button id="btnEnableReminder">Включить ежедневно</button>
-        <button id="btnDisableReminder">Выключить</button>
+        <button id="btnEnableReminder">On</button>
       </div>
 
-      <div class="hint" id="status">Загрузка...</div>
+      <div class="hint" id="status">Loading...</div>
     </section>
-
-    <section class="word-nav">
-      <button id="btnPrevWord">Предыдущее</button>
-      <div id="wordCounter" class="counter">0 / 0</div>
-      <button id="btnNextWord">Следующее</button>
-    </section>
-
-    <section id="cards" class="cards"></section>
   </main>
 
-  <nav class="bottom-nav">
-    <button id="btnBottomToday">Сегодня</button>
-    <button id="btnBottomSearch">Поиск</button>
-    <button id="btnBottomReview">Ревью</button>
-  </nav>
+  <dialog id="helpDialog" class="help-dialog">
+    <article class="help-sheet">
+      <h3>About this dictionary</h3>
+      <p>
+        This is a personal frequency dictionary from "48 Laws of Power".
+        Words are sorted by frequency, and study mode focuses mostly on advanced vocabulary.
+      </p>
+      <p><strong>How to use it effectively:</strong></p>
+      <ul>
+        <li>Press "Today" and learn one word at a time.</li>
+        <li>Try to recall the meaning first, then open translation.</li>
+        <li>Open IPA for difficult words.</li>
+        <li>Use Next to continue to the next word.</li>
+        <li>Use Remove to exclude a word from study.</li>
+        <li>Use Review for due words.</li>
+        <li>Use Stats to track progress and achievements.</li>
+      </ul>
+      <div class="help-actions">
+        <button id="btnReset" class="danger">Reset Progress</button>
+        <button id="btnCloseHelp">Close</button>
+      </div>
+    </article>
+  </dialog>
 
   <template id="cardTemplate">
     <article class="card">
@@ -68,19 +82,22 @@
         <span class="idx"></span>
         <span class="badge"></span>
       </div>
+      <div class="actions">
+        <button data-grade="exclude"><span>Remove</span><small class="eta"></small></button>
+        <button data-action="review"><span>Review</span><small class="eta">open due words</small></button>
+        <button data-grade="good"><span>Next</span><small class="eta"></small></button>
+      </div>
       <h2 class="word"></h2>
+      <details class="ipa-details">
+        <summary>Show transcription (IPA)</summary>
+        <p class="ipa"></p>
+      </details>
       <details>
-        <summary>Показать перевод</summary>
+        <summary>Show translation</summary>
         <p class="translation"></p>
       </details>
       <p class="example"></p>
-      <p class="prompt">Задание: составьте свое предложение с этим словом.</p>
-      <div class="actions">
-        <button data-grade="exclude"><span>Убрать</span><small class="eta"></small></button>
-        <button data-grade="hard"><span>Hard</span><small class="eta"></small></button>
-        <button data-grade="good"><span>Good</span><small class="eta"></small></button>
-        <button data-grade="easy"><span>Easy</span><small class="eta"></small></button>
-      </div>
+      <p class="prompt">Task: make your own sentence with this word.</p>
     </article>
   </template>
 

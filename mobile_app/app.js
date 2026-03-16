@@ -1,6 +1,6 @@
 const WORDS_PER_DAY = 15;
 const DATA_URL = "./48laws_frequency_ru.json";
-const APP_BUILD = "2026-03-16-c";
+const APP_BUILD = "2026-03-16-d";
 
 const STORAGE_KEY = "vocab48_state_v3";
 const TODAY_KEY = "vocab48_today_v3";
@@ -49,6 +49,51 @@ const AUTO_EXCLUDE_STOPWORDS = new Set([
   "behind","beside","besides","beyond","despite","except","inside","outside","toward","towards","underneath",
   "although","however","therefore","meanwhile","otherwise","perhaps","indeed","already","almost","rather","quite"
 ]);
+
+const AUTO_EXCLUDE_COUNTRIES = new Set([
+  "afghanistan","albania","algeria","andorra","angola","argentina","armenia","australia","austria","azerbaijan",
+  "bahamas","bahrain","bangladesh","barbados","belarus","belgium","belize","benin","bhutan","bolivia",
+  "bosnia","botswana","brazil","brunei","bulgaria","burkina","burundi","cambodia","cameroon","canada",
+  "chad","chile","china","colombia","comoros","congo","croatia","cuba","cyprus","czech","denmark","djibouti",
+  "dominica","ecuador","egypt","eritrea","estonia","eswatini","ethiopia","fiji","finland","france","gabon",
+  "gambia","georgia","germany","ghana","greece","grenada","guatemala","guinea","guyana","haiti","honduras",
+  "hungary","iceland","india","indonesia","iran","iraq","ireland","israel","italy","jamaica","japan","jordan",
+  "kazakhstan","kenya","kiribati","kuwait","kyrgyzstan","laos","latvia","lebanon","lesotho","liberia","libya",
+  "liechtenstein","lithuania","luxembourg","madagascar","malawi","malaysia","maldives","mali","malta",
+  "mauritania","mauritius","mexico","moldova","monaco","mongolia","montenegro","morocco","mozambique","myanmar",
+  "namibia","nauru","nepal","netherlands","nicaragua","niger","nigeria","norway","oman","pakistan","palau",
+  "panama","paraguay","peru","philippines","poland","portugal","qatar","romania","russia","rwanda",
+  "samoa","senegal","serbia","seychelles","singapore","slovakia","slovenia","somalia","spain","sudan",
+  "suriname","sweden","switzerland","syria","taiwan","tajikistan","tanzania","thailand","togo","tonga",
+  "tunisia","turkey","turkmenistan","tuvalu","uganda","ukraine","uruguay","uzbekistan","vanuatu","venezuela",
+  "vietnam","yemen","zambia","zimbabwe","england","scotland","wales","britain","uk","usa","america"
+]);
+
+const AUTO_EXCLUDE_NAMES_EXTRA = new Set([
+  "henri","francois","marie","jean","pierre","antoine","jacques","alfonso","isabella","ferdinand","philip",
+  "louie","loui","ludwig","wilhelm","otto","frederick","catherine","romanov","ivan","peter","nicholas",
+  "thomas","edward","george","richard","anne","mary","john","paul","michael","william","james","robert",
+  "arthur","bismarck","talleyand","talleyrand","metternich","fouche","fouchet","rothschild","medicis",
+  "habsburg","prussia","austria","francis","cesare","lorenzo","giuliano","maoism","confucius","han","qin","chu"
+]);
+
+// Practical heuristic: remove high-frequency vocabulary (roughly A1-B2 band).
+// Approximation: in this corpus, top ~11k frequent words are treated as CEFR A1-B2.
+const CEFR_B2_MAX_RANK = 11000;
+const ADVANCED_MIN_RANK = CEFR_B2_MAX_RANK + 1;
+
+const LEVELS_100 = [
+  { title: "Scout", badge: "Seed Scout 🌱" },
+  { title: "Seeker", badge: "Pattern Seeker 🔍" },
+  { title: "Practitioner", badge: "Calm Strategist ♟️" },
+  { title: "Operator", badge: "Quiet Operator 🛡️" },
+  { title: "Tactician", badge: "Tactical Mind 🧭" },
+  { title: "Architect", badge: "Influence Architect 🏛️" },
+  { title: "Commander", badge: "Precision Commander 🎯" },
+  { title: "Strategist", badge: "Long Game Strategist 🧠" },
+  { title: "Mastermind", badge: "Power Reader 📜" },
+  { title: "Grandmaster", badge: "Iron Will 👑" },
+];
 
 const LAW_MORALS = [
   "Сила в сдержанности: не затмевай того, кто выше тебя.",
@@ -106,6 +151,7 @@ const $cards = document.getElementById("cards");
 const $searchInput = document.getElementById("searchInput");
 const $reminderTime = document.getElementById("reminderTime");
 const $wordCounter = document.getElementById("wordCounter");
+const $helpDialog = document.getElementById("helpDialog");
 const cardTpl = document.getElementById("cardTemplate");
 
 let words = [];
@@ -114,6 +160,16 @@ let state = null;
 let currentBatch = [];
 let currentIndex = 0;
 let currentModeLabel = "Сегодня";
+
+function setStatusText(message) {
+  $status.classList.remove("status-card");
+  $status.textContent = message;
+}
+
+function setStatusHtml(html) {
+  $status.classList.add("status-card");
+  $status.innerHTML = html;
+}
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -190,12 +246,15 @@ function progressOf(key) {
   return state.progress[key];
 }
 
-function shouldAutoExclude(word) {
+function shouldAutoExclude(word, rank) {
   if (!word) return true;
   if (AUTO_EXCLUDE_WORDS.has(word)) return true;
   if (AUTO_EXCLUDE_NAMES.has(word)) return true;
+  if (AUTO_EXCLUDE_NAMES_EXTRA.has(word)) return true;
   if (AUTO_EXCLUDE_A1.has(word)) return true;
   if (AUTO_EXCLUDE_STOPWORDS.has(word)) return true;
+  if (AUTO_EXCLUDE_COUNTRIES.has(word)) return true;
+  if (Number.isFinite(rank) && rank > 0 && rank <= CEFR_B2_MAX_RANK) return true;
   if (/^[a-z]$/.test(word)) return true;
   if (/^[ivxlcdm]+$/.test(word)) return true;
   if (/^[a-z]{1,2}$/.test(word)) return true;
@@ -214,16 +273,19 @@ function intervalDays(timesSeen, grade) {
   const map = {
     again: 1,
     hard: Math.max(1, Math.floor(timesSeen <= 2 ? 2 : 3)),
-    good: [2, 4, 7, 14, 30][Math.min(timesSeen, 4)],
+    good: 3,
     easy: [4, 7, 14, 30, 45][Math.min(timesSeen, 4)],
   };
   return map[grade] || 2;
 }
 
 function etaLabel(days) {
-  if (days <= 1) return "≈1 день";
-  if (days < 5) return `≈${days} дня`;
-  return `≈${days} дней`;
+  if (days <= 1) return "\u22481 day";
+  return `\u2248${days} days`;
+}
+
+function showIpaForWord(w) {
+  return Number.isFinite(w.rank) && w.rank >= ADVANCED_MIN_RANK && Boolean(w.ipa);
 }
 
 function estimateReturnDays(wordKey, grade) {
@@ -351,13 +413,12 @@ function renderCurrentWord() {
   updateCounter();
 
   if (!currentBatch.length) {
-    $status.textContent = `${currentModeLabel}: 0 слов`;
+    setStatusText(`${currentModeLabel}: 0 слов`);
     return;
   }
 
   const w = currentBatch[currentIndex];
-  $status.textContent = `${currentModeLabel}: слово ${currentIndex + 1} из ${currentBatch.length}`;
-
+  setStatusText(`${currentModeLabel}: слово ${currentIndex + 1} из ${currentBatch.length}`);
   const node = cardTpl.content.firstElementChild.cloneNode(true);
   node.querySelector(".idx").textContent = `#${currentIndex + 1}`;
   const badge = node.querySelector(".badge");
@@ -365,6 +426,14 @@ function renderCurrentWord() {
   badge.textContent = isReview ? "REVIEW" : "NEW";
   badge.classList.add(isReview ? "badge-review" : "badge-new");
   node.querySelector(".word").textContent = w.word;
+  const ipaDetailsEl = node.querySelector(".ipa-details");
+  const ipaEl = node.querySelector(".ipa");
+  if (showIpaForWord(w)) {
+    ipaEl.textContent = `IPA: /${w.ipa}/`;
+    ipaDetailsEl.style.display = "";
+  } else {
+    ipaDetailsEl.style.display = "none";
+  }
   node.querySelector(".translation").textContent = w.translation_ru || "—";
   node.querySelector(".example").textContent = w.example_from_book
     ? `Example: ${w.example_from_book}${w.example_page ? ` (p.${w.example_page})` : ""}`
@@ -372,13 +441,28 @@ function renderCurrentWord() {
 
   node.querySelectorAll("button[data-grade]").forEach((btn) => {
     const grade = btn.dataset.grade;
-    const eta = estimateReturnDays(w.key, grade);
-    btn.querySelector(".eta").textContent = grade === "exclude" ? "без повторов" : etaLabel(eta);
+    if (grade === "exclude") {
+      btn.querySelector(".eta").textContent = "no repeats";
+    } else if (grade === "good") {
+      btn.querySelector(".eta").textContent = "\u22483 days";
+    } else {
+      const eta = estimateReturnDays(w.key, grade);
+      btn.querySelector(".eta").textContent = etaLabel(eta);
+    }
     btn.addEventListener("click", () => {
       applyGrade(w.key, grade);
       currentBatch[currentIndex].timesSeen = progressOf(w.key).timesSeen;
       goNextWord(true);
     });
+  });
+
+  node.querySelectorAll("button[data-action]").forEach((btn) => {
+    const action = btn.dataset.action;
+    if (action === "review") {
+      btn.addEventListener("click", () => {
+        openReview();
+      });
+    }
   });
 
   attachSwipeNavigation(node);
@@ -393,7 +477,7 @@ function goNextWord(fromGrade = false) {
     return;
   }
   if (fromGrade) {
-    $status.textContent = `${currentModeLabel}: пачка завершена`;
+    setStatusText(`${currentModeLabel}: пачка завершена`);
   }
   renderCurrentWord();
 }
@@ -479,7 +563,7 @@ function runSearch() {
   setBatch(found, `Поиск: найдено ${found.length}`);
 }
 
-function statsText() {
+function collectStats() {
   const all = words.length;
   const today = isoToday();
   let excluded = 0;
@@ -492,58 +576,80 @@ function statsText() {
       excluded += 1;
       continue;
     }
-    if (p.timesSeen > 0) {
-      seenActive += 1;
-    }
-    if (p.dueDate <= today) {
-      dueActive += 1;
-    }
+    if (p.timesSeen > 0) seenActive += 1;
+    if (p.dueDate <= today) dueActive += 1;
   }
 
   const activeTotal = Math.max(0, all - excluded);
   const percent = activeTotal > 0 ? ((seenActive / activeTotal) * 100).toFixed(1) : "0.0";
-  const milestone = 1000;
-  const completedMilestones = Math.floor(seenActive / milestone);
-  const inCurrentMilestone = seenActive % milestone;
-  const toNextMilestone = inCurrentMilestone === 0 ? (seenActive === 0 ? milestone : 0) : (milestone - inCurrentMilestone);
 
-  const levels = [
-    "Новичок",
-    "Ученик",
-    "Практик",
-    "Продвинутый",
-    "Эксперт",
-    "Профи",
-    "Стратег",
-    "Элита",
-    "Мастер",
-    "Грандмастер",
-  ];
-  const badges = ["⭐", "🔥", "🚀", "💎", "🏹", "🧠", "⚔️", "👑", "🏆", "🌟"];
-  const level = levels[Math.min(completedMilestones, levels.length - 1)];
-  const badgeLine = completedMilestones > 0
-    ? badges.slice(0, Math.min(completedMilestones, badges.length)).join(" ")
-    : "—";
-  const completed500 = Math.floor(seenActive / 500);
-  const next500Target = (completed500 + 1) * 500;
-  const toNext500 = Math.max(0, next500Target - seenActive);
-  const currentMoral = completed500 > 0
-    ? LAW_MORALS[(completed500 - 1) % LAW_MORALS.length]
-    : "Начало пути: сначала регулярность, потом скорость.";
+  const milestone = 100;
+  const completedHundreds = Math.floor(seenActive / milestone);
+  const inCurrentHundred = seenActive % milestone;
+  const toNextHundred = inCurrentHundred === 0 ? (seenActive === 0 ? milestone : 0) : (milestone - inCurrentHundred);
+
+  let levelTitle = "Starter";
+  let achievement = "First Steps \u{1F9E9}";
+  let moral = "Consistency beats intensity. Secure your first 100 words.";
+
+  if (completedHundreds > 0) {
+    const levelIdx = (completedHundreds - 1) % LEVELS_100.length;
+    const prestige = Math.floor((completedHundreds - 1) / LEVELS_100.length);
+    const base = LEVELS_100[levelIdx];
+    levelTitle = prestige > 0 ? `${base.title}+${prestige}` : base.title;
+    achievement = base.badge;
+    moral = LAW_MORALS[(completedHundreds - 1) % LAW_MORALS.length];
+  }
+
+  const stars = completedHundreds > 0 ? "\u2B50".repeat(Math.min(completedHundreds, 10)) : "\u2014";
+
+  return {
+    all,
+    excluded,
+    activeTotal,
+    seenActive,
+    percent,
+    dueActive,
+    inCurrentHundred,
+    toNextHundred,
+    levelTitle,
+    achievement,
+    stars,
+    moral,
+  };
+}
+
+function statsText() {
+  const s = collectStats();
 
   return [
-    `Всего слов: ${all}`,
-    `Исключено: ${excluded}`,
-    `Активных слов: ${activeTotal}`,
-    `Изучено (активные): ${seenActive} (${percent}%)`,
-    `К ревью сегодня: ${dueActive}`,
-    `Прогресс 1000-блока: ${inCurrentMilestone}/1000`,
-    `До следующей ачивки: ${toNextMilestone}`,
-    `До следующей морали (500): ${toNext500}`,
-    `Уровень: ${level}`,
-    `Ачивки: ${badgeLine}`,
-    `Мораль этапа: ${currentMoral}`,
+    `Total words: ${s.all}`,
+    `Excluded: ${s.excluded}`,
+    `Active words: ${s.activeTotal}`,
+    `Learned (active): ${s.seenActive} (${s.percent}%)`,
+    `Due today: ${s.dueActive}`,
+    `100-block progress: ${s.inCurrentHundred}/100`,
+    `To next level (100): ${s.toNextHundred}`,
+    `Level: ${s.levelTitle}`,
+    `Achievement: ${s.achievement}`,
+    `Stars: ${s.stars}`,
+    `Moral of this stage: ${s.moral}`,
   ].join("\n");
+}
+
+function statsHtml() {
+  const s = collectStats();
+  return `
+<strong>Statistics</strong>
+<br>Words: ${s.seenActive}/${s.activeTotal} (${s.percent}%)
+<br>Review today: ${s.dueActive}
+<br>Progress 100-block: ${s.inCurrentHundred}/100
+<br>Next level in: ${s.toNextHundred}
+<br>Level: ${s.levelTitle}
+<br>Achievement: ${s.achievement}
+<br>Stars: ${s.stars}
+<br>Moral: ${s.moral}
+  `.trim();
 }
 
 function getLocalNotificationsPlugin() {
@@ -561,14 +667,14 @@ function nextDateFor(hour, minute) {
 async function enableDailyReminder(timeValue) {
   const plugin = getLocalNotificationsPlugin();
   if (!plugin) {
-    $status.textContent = "Напоминания доступны в Android APK (Capacitor).";
+    setStatusText("Напоминания доступны в Android APK (Capacitor).");
     return;
   }
   const [hourStr, minuteStr] = String(timeValue || "20:00").split(":");
   const hour = Number(hourStr);
   const minute = Number(minuteStr);
   if (Number.isNaN(hour) || Number.isNaN(minute)) {
-    $status.textContent = "Неверный формат времени напоминания.";
+    setStatusText("Неверный формат времени напоминания.");
     return;
   }
 
@@ -576,7 +682,7 @@ async function enableDailyReminder(timeValue) {
     const check = await plugin.checkPermissions();
     const perm = check.display === "granted" ? check : await plugin.requestPermissions();
     if (perm.display !== "granted") {
-      $status.textContent = "Разрешение на уведомления не выдано.";
+      setStatusText("Разрешение на уведомления не выдано.");
       return;
     }
 
@@ -604,24 +710,24 @@ async function enableDailyReminder(timeValue) {
     });
     setReminderTime(timeValue);
     setReminderEnabled(true);
-    $status.textContent = `Ежедневное напоминание включено на ${timeValue}.`;
+    setStatusText(`Ежедневное напоминание включено на ${timeValue}.`);
   } catch (err) {
-    $status.textContent = `Ошибка напоминания: ${err.message}`;
+    setStatusText(`Ошибка напоминания: ${err.message}`);
   }
 }
 
 async function disableDailyReminder() {
   const plugin = getLocalNotificationsPlugin();
   if (!plugin) {
-    $status.textContent = "Напоминания доступны в Android APK (Capacitor).";
+    setStatusText("Напоминания доступны в Android APK (Capacitor).");
     return;
   }
   try {
     await plugin.cancel({ notifications: [{ id: REMINDER_ID }] });
     setReminderEnabled(false);
-    $status.textContent = "Ежедневное напоминание выключено.";
+    setStatusText("Ежедневное напоминание выключено.");
   } catch (err) {
-    $status.textContent = `Ошибка отключения: ${err.message}`;
+    setStatusText(`Ошибка отключения: ${err.message}`);
   }
 }
 
@@ -641,6 +747,7 @@ async function loadData() {
         rank: Number(r.rank || i + 1),
         word,
         translation_ru: tr || null,
+        ipa: String(r.ipa || "").trim() || null,
         example_from_book: r.example_from_book || r.example || null,
         example_page: r.example_page || null,
         searchWord: normalizeText(word),
@@ -653,7 +760,7 @@ async function loadData() {
   byKey = new Map(words.map((w) => [w.key, w]));
 
   for (const w of words) {
-    if (shouldAutoExclude(w.key)) {
+    if (shouldAutoExclude(w.key, w.rank)) {
       const p = progressOf(w.key);
       p.excluded = true;
       if (p.dueDate <= isoToday()) {
@@ -682,26 +789,54 @@ function openNextBatch() {
   setBatch(batch, "Следующая пачка");
 }
 
-function initButtons() {
-  document.getElementById("btnToday").addEventListener("click", openToday);
-  document.getElementById("btnNext").addEventListener("click", openNextBatch);
-  document.getElementById("btnReview").addEventListener("click", openReview);
+function openHelpDialog() {
+  if (!$helpDialog) return;
+  if (typeof $helpDialog.showModal === "function") {
+    $helpDialog.showModal();
+    return;
+  }
+  $helpDialog.setAttribute("open", "open");
+}
 
-  document.getElementById("btnBottomToday").addEventListener("click", openToday);
-  document.getElementById("btnBottomReview").addEventListener("click", openReview);
-  document.getElementById("btnBottomSearch").addEventListener("click", () => {
+function closeHelpDialog() {
+  if (!$helpDialog) return;
+  if (typeof $helpDialog.close === "function") {
+    $helpDialog.close();
+    return;
+  }
+  $helpDialog.removeAttribute("open");
+}
+
+function initButtons() {
+  const on = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", fn);
+  };
+
+  on("btnToday", openToday);
+  on("btnNext", openNextBatch);
+  on("btnReview", openReview);
+
+  on("btnBottomToday", openToday);
+  on("btnBottomReview", openReview);
+  on("btnBottomSearch", () => {
     $searchInput.focus();
     runSearch();
   });
 
-  document.getElementById("btnPrevWord").addEventListener("click", goPrevWord);
-  document.getElementById("btnNextWord").addEventListener("click", () => goNextWord(false));
+  on("btnPrevWord", goPrevWord);
+  on("btnNextWord", () => goNextWord(false));
 
-  document.getElementById("btnStats").addEventListener("click", () => {
-    $status.textContent = statsText();
+  on("btnStats", () => {
+    setStatusHtml(statsHtml());
+  });
+  on("btnHelp", openHelpDialog);
+  on("btnCloseHelp", closeHelpDialog);
+  $helpDialog?.addEventListener("click", (e) => {
+    if (e.target === $helpDialog) closeHelpDialog();
   });
 
-  document.getElementById("btnReset").addEventListener("click", () => {
+  on("btnReset", () => {
     if (!confirm("Сбросить весь прогресс?")) return;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TODAY_KEY);
@@ -709,23 +844,23 @@ function initButtons() {
     currentBatch = [];
     currentIndex = 0;
     renderCurrentWord();
-    $status.textContent = "Прогресс сброшен.";
+    setStatusText("Прогресс сброшен.");
   });
 
-  document.getElementById("btnEnableReminder").addEventListener("click", async () => {
+  on("btnEnableReminder", async () => {
     await enableDailyReminder($reminderTime.value || "20:00");
   });
 
-  document.getElementById("btnDisableReminder").addEventListener("click", async () => {
+  on("btnDisableReminder", async () => {
     await disableDailyReminder();
   });
 
-  document.getElementById("btnClearSearch").addEventListener("click", () => {
+  on("btnClearSearch", () => {
     $searchInput.value = "";
     openToday();
   });
 
-  document.getElementById("btnSearch").addEventListener("click", runSearch);
+  on("btnSearch", runSearch);
 
   $searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -746,13 +881,12 @@ async function bootstrap() {
     $reminderTime.value = getReminderTime();
     initButtons();
     openToday();
-    $status.textContent = `Готово (build ${APP_BUILD}). ${statsText()}`;
-
+    setStatusText(`Ready (build ${APP_BUILD}). Tap Stats for summary.`);
     if (isReminderEnabled()) {
       await enableDailyReminder($reminderTime.value || "20:00");
     }
   } catch (err) {
-    $status.textContent = `Ошибка: ${err.message}`;
+    setStatusText(`Ошибка: ${err.message}`);
   }
 }
 

@@ -138,6 +138,18 @@ http://<YOUR_PC_IP>:8000/mobile_app/
 
 This app uses `48laws_frequency_ru.json`, shows 15 words/day, tracks progress locally, supports review flow, and includes search across all words.
 
+### Mobile UI (Latest)
+
+Current mobile layout (Android/iPhone preview):
+
+![Mobile UI](docs/images/app_ui_mobile_2026-03-17.png)
+
+Highlights:
+- Top card actions: `Remove` (no repeats), `Review` (open due words), `Next` (~3 days).
+- Compact controls grid: `Today`, `Next Batch`, `Stats`, `Help`.
+- `Reset Progress` moved to Help dialog to avoid accidental taps.
+- Distinct visual blocks for header, word card, navigation, and control panel.
+
 ## Build APK (No Google Play)
 
 This project now includes a Capacitor Android shell in `android/`.
